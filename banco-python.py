@@ -1,66 +1,174 @@
-menu = """
+import textwrap
 
-[d] Depositar
-[s] Sacar
-[e] Extrato
-[q] Sair
+class Usuario:
+    def __init__(self, nome, data_nascimento, cpf, endereco):
+        self.nome = nome
+        self.data_nascimento = data_nascimento
+        self.cpf = cpf
+        self.endereco = endereco
 
-=> """
+    def __str__(self):
+        return f"{self.nome} ({self.cpf})"
 
-saldo = 0
-limite = 500
-extrato = ""
-numero_saques = 0
-LIMITE_SAQUES = 3
+class Conta:
+    def __init__(self, agencia, numero_conta, usuario):
+        self.agencia = agencia
+        self.numero_conta = numero_conta
+        self.usuario = usuario
+        self.saldo = 0
+        self.extrato = ""
+        self.numero_saques = 0
+        self.LIMITE_SAQUES = 3
+        self.LIMITE_SAQUE_VALOR = 500
 
-while True:
-
-    opcao = input(menu)
-
-    if opcao == "d":
-        valor = float(input("Informe o valor do depósito: "))
-
+    def depositar(self, valor):
         if valor > 0:
-            saldo += valor
-            extrato += f"Depósito: R$ {valor:.2f}\n"
-
+            self.saldo += valor
+            self.extrato += f"Depósito:\tR$ {valor:.2f}\n"
+            print("\n=== Depósito realizado com sucesso! ===")
         else:
-            print("Operação falhou! O valor informado é inválido.")
+            print("\nOperação falhou! O valor informado é inválido.")
 
-    elif opcao == "s":
-        valor = float(input("Informe o valor do saque: "))
+    def sacar(self, valor):
+        if valor <= 0:
+            print("\nOperação falhou! O valor informado é inválido.")
+            return
 
-        excedeu_saldo = valor > saldo
+        if valor > self.saldo:
+            print("\nOperação falhou! Você não tem saldo suficiente.")
+            return
 
-        excedeu_limite = valor > limite
+        if valor > self.LIMITE_SAQUE_VALOR:
+            print("\nOperação falhou! O valor do saque excede o limite.")
+            return
 
-        excedeu_saques = numero_saques >= LIMITE_SAQUES
+        if self.numero_saques >= self.LIMITE_SAQUES:
+            print("\nOperação falhou! Número máximo de saques excedido.")
+            return
 
-        if excedeu_saldo:
-            print("Operação falhou! Você não tem saldo suficiente.")
+        self.saldo -= valor
+        self.extrato += f"Saque:\t\tR$ {valor:.2f}\n"
+        self.numero_saques += 1
+        print("\n=== Saque realizado com sucesso! ===")
 
-        elif excedeu_limite:
-            print("Operação falhou! O valor do saque excede o limite.")
-
-        elif excedeu_saques:
-            print("Operação falhou! Número máximo de saques excedido.")
-
-        elif valor > 0:
-            saldo -= valor
-            extrato += f"Saque: R$ {valor:.2f}\n"
-            numero_saques += 1
-
-        else:
-            print("Operação falhou! O valor informado é inválido.")
-
-    elif opcao == "e":
+    def exibir_extrato(self):
         print("\n================ EXTRATO ================")
-        print("Não foram realizadas movimentações." if not extrato else extrato)
-        print(f"\nSaldo: R$ {saldo:.2f}")
+        print("Não foram realizadas movimentações." if not self.extrato else self.extrato)
+        print(f"\nSaldo:\t\tR$ {self.saldo:.2f}")
         print("==========================================")
 
-    elif opcao == "q":
-        break
+class Banco:
+    def __init__(self):
+        self.usuarios = []
+        self.contas = []
+        self.AGENCIA = "0001"
 
-    else:
-        print("Operação inválida, por favor selecione novamente a operação desejada.")
+    def criar_usuario(self):
+        cpf = input("Informe o CPF (somente número): ")
+        usuario = self.filtrar_usuario(cpf)
+
+        if usuario:
+            print("\nJá existe usuário com esse CPF!")
+            return
+
+        nome = input("Informe o nome completo: ")
+        data_nascimento = input("Informe a data de nascimento (dd-mm-aaaa): ")
+        endereco = input("Informe o endereço (logradouro, nro - bairro - cidade/sigla estado): ")
+
+        novo_usuario = Usuario(nome, data_nascimento, cpf, endereco)
+        self.usuarios.append(novo_usuario)
+        print("=== Usuário criado com sucesso! ===")
+
+    def filtrar_usuario(self, cpf):
+        for usuario in self.usuarios:
+            if usuario.cpf == cpf:
+                return usuario
+        return None
+
+    def criar_conta(self):
+        cpf = input("Informe o CPF do usuário: ")
+        usuario = self.filtrar_usuario(cpf)
+
+        if usuario:
+            numero_conta = len(self.contas) + 1
+            nova_conta = Conta(self.AGENCIA, numero_conta, usuario)
+            self.contas.append(nova_conta)
+            print("\n=== Conta criada com sucesso! ===")
+        else:
+            print("\nUsuário não encontrado, fluxo de criação de conta encerrado!")
+
+    def listar_contas(self):
+        for conta in self.contas:
+            linha = f"""\
+                Agência:\t{conta.agencia}
+                C/C:\t\t{conta.numero_conta}
+                Titular:\t{conta.usuario.nome}
+            """
+            print("=" * 100)
+            print(textwrap.dedent(linha))
+
+def menu():
+    menu_texto = """\n
+    ================ MENU ================
+    [d]\tDepositar
+    [s]\tSacar
+    [e]\tExtrato
+    [nc]\tNova conta
+    [lc]\tListar contas
+    [nu]\tNovo usuário
+    [q]\tSair
+    => """
+    return input(textwrap.dedent(menu_texto))
+
+def main():
+    banco = Banco()
+
+    while True:
+        opcao = menu()
+
+        if opcao == "d":
+            if not banco.contas:
+                print("\nNão há contas disponíveis. Crie uma conta primeiro.")
+                continue
+
+            numero_conta = int(input("Informe o número da conta: "))
+            conta = banco.contas[numero_conta - 1]
+            valor = float(input("Informe o valor do depósito: "))
+            conta.depositar(valor)
+
+        elif opcao == "s":
+            if not banco.contas:
+                print("\nNão há contas disponíveis. Crie uma conta primeiro.")
+                continue
+
+            numero_conta = int(input("Informe o número da conta: "))
+            conta = banco.contas[numero_conta - 1]
+            valor = float(input("Informe o valor do saque: "))
+            conta.sacar(valor)
+
+        elif opcao == "e":
+            if not banco.contas:
+                print("\nNão há contas disponíveis. Crie uma conta primeiro.")
+                continue
+
+            numero_conta = int(input("Informe o número da conta: "))
+            conta = banco.contas[numero_conta - 1]
+            conta.exibir_extrato()
+
+        elif opcao == "nu":
+            banco.criar_usuario()
+
+        elif opcao == "nc":
+            banco.criar_conta()
+
+        elif opcao == "lc":
+            banco.listar_contas()
+
+        elif opcao == "q":
+            break
+
+        else:
+            print("Operação inválida, por favor selecione novamente a operação desejada.")
+
+if __name__ == "__main__":
+    main()
